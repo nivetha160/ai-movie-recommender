@@ -1,46 +1,43 @@
 import streamlit as st
 import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-st.set_page_config(page_title="Review Analyzer", layout="centered")
+st.set_page_config(page_title="Book Recommender", layout="centered")
 
-st.title("📱 Review Analyzer App")
-st.write("Upload your **reviews.csv** file")
+st.title("📚 AI Book Recommendation System")
 
-# File upload
-uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
+uploaded_file = st.file_uploader("Upload reviews.csv", type=["csv"])
 
-if uploaded_file is not None:
-    try:
-        df = pd.read_csv(uploaded_file)
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
 
-        st.success("✅ File uploaded successfully!")
-        st.subheader("📄 Preview")
-        st.dataframe(df)
+    st.subheader("📄 Dataset Preview")
+    st.dataframe(df.head())
 
-        # Basic analysis
-        if "rating" in df.columns:
-            avg_rating = df["rating"].mean()
-            st.subheader("⭐ Average Rating")
-            st.write(round(avg_rating, 2))
+    # Combine book name + review
+    df["content"] = df["book"] + " " + df["review"]
 
-        # New feature: sentiment
-        st.subheader("🧠 Simple Sentiment Check")
+    tfidf = TfidfVectorizer(stop_words="english")
+    tfidf_matrix = tfidf.fit_transform(df["content"])
 
-        def sentiment(text):
-            text = text.lower()
-            if "good" in text or "excellent" in text:
-                return "Positive 😊"
-            elif "bad" in text or "worst" in text:
-                return "Negative 😡"
-            else:
-                return "Neutral 😐"
+    similarity = cosine_similarity(tfidf_matrix)
 
-        if "review" in df.columns:
-            df["Sentiment"] = df["review"].apply(sentiment)
-            st.dataframe(df)
+    st.subheader("🔍 Choose a Book")
+    selected_book = st.selectbox("Select book", df["book"].unique())
 
-    except Exception as e:
-        st.error("❌ Error reading file")
-        st.write(e)
-else:
-    st.info("📂 Please upload reviews.csv")
+    if st.button("Recommend Books"):
+        idx = df[df["book"] == selected_book].index[0]
+
+        scores = list(enumerate(similarity[idx]))
+        scores = sorted(scores, key=lambda x: x[1], reverse=True)
+
+        recommended_books = []
+        for i in scores[1:6]:
+            book_name = df.iloc[i[0]]["book"]
+            if book_name not in recommended_books:
+                recommended_books.append(book_name)
+
+        st.subheader("✨ Recommended Books")
+        for book in recommended_books:
+            st.write("📘", book)
