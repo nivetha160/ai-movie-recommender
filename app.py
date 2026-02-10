@@ -1,81 +1,90 @@
 import streamlit as st
 import pandas as pd
-import re
-import nltk
-from nltk.corpus import stopwords
-from textblob import TextBlob
 
-nltk.download('stopwords')
-stop_words = set(stopwords.words('english'))
+st.set_page_config(
+    page_title="Book Recommender",
+    page_icon="📚",
+    layout="wide"
+)
 
-st.set_page_config(page_title="AI Movie Recommender", layout="centered")
-st.title("🎬 AI Movie Recommendation App")
-st.write("Mood-aware & Explainable AI Recommender")
+st.markdown("""
+<style>
+.card {
+    border-radius: 12px;
+    padding: 15px;
+    margin: 10px 0;
+    background: #ffffff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.book-title {
+    font-size: 20px;
+    font-weight: bold;
+}
+.genre {
+    color: #555;
+}
+.rating {
+    color: #ff9800;
+    font-weight: bold;
+}
+</style>
+""", unsafe_allow_html=True)
 
-# ---------------- Upload CSV ----------------
-uploaded_file = st.file_uploader("Upload reviews CSV", type="csv")
+st.title("📚 Book Recommender App")
+st.caption("Search books & get smart recommendations")
+
+uploaded_file = st.file_uploader("📂 Upload reviews.csv", type=["csv"])
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
+    st.success("✅ File uploaded")
 
-    # ---------------- Clean Text ----------------
-    def clean_text(text):
-        text = text.lower()
-        text = re.sub(r'[^a-z\s]', '', text)
-        words = text.split()
-        words = [w for w in words if w not in stop_words]
-        return " ".join(words)
+    search = st.text_input("🔍 Search book name")
 
-    df['clean_review'] = df['review'].apply(clean_text)
+    if search:
+        results = df[df["book"].str.contains(search, case=False)]
 
-    # ---------------- Sentiment ----------------
-    df['sentiment'] = df['review'].apply(lambda x: TextBlob(x).sentiment.polarity)
-
-    # ---------------- USER CONTROLS ----------------
-    st.subheader("🎛 Customize Recommendation")
-
-    mood = st.selectbox(
-        "Select your mood",
-        ["😊 Happy", "😢 Sad", "🤔 Thoughtful"]
-    )
-
-    alpha = st.slider(
-        "Rating Importance",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.6
-    )
-    beta = 1 - alpha
-
-    top_n = st.selectbox("Number of recommendations", [3, 5, 10])
-
-    # ---------------- Mood Filter ----------------
-    if mood == "😊 Happy":
-        df = df[df['sentiment'] > 0]
-    elif mood == "😢 Sad":
-        df = df[df['sentiment'] < 0]
-
-    # ---------------- Fusion Score ----------------
-    df['norm_rating'] = df['rating'] / 5
-    df['final_score'] = alpha * df['norm_rating'] + beta * df['sentiment']
-
-    # ---------------- Explainable AI ----------------
-    def explain(row):
-        if row['sentiment'] > 0.4:
-            return "Highly positive reviews"
-        elif row['sentiment'] > 0:
-            return "Positive feedback"
-        elif row['sentiment'] < 0:
-            return "Negative reviews reduced score"
+        if results.empty:
+            st.warning("❌ No book found")
         else:
-            return "Neutral reviews"
+            st.subheader("📖 Search Results")
 
-    df['reason'] = df.apply(explain, axis=1)
+            book_list = results["book"].unique().tolist()
+            selected_book = st.selectbox("Select a book", book_list)
 
-    # ---------------- Show Output ----------------
-    st.subheader("⭐ Recommended Movies")
-    st.table(
-        df.sort_values(by='final_score', ascending=False)
-          [['movie', 'final_score', 'reason']]
-          .head(top_n)
-    )
+            if selected_book:
+                book_row = df[df["book"] == selected_book].iloc[0]
+                genre = book_row["genre"]
+
+                st.markdown(f"""
+                <div class="card">
+                    <div class="book-title">{book_row['book']}</div>
+                    <div class="genre">Genre: {genre}</div>
+                    <div class="rating">⭐ Rating: {book_row['rating']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                st.subheader("📚 Recommended Books")
+
+                recs = df[
+                    (df["genre"] == genre) &
+                    (df["book"] != selected_book) &
+                    (df["rating"] >= 4)
+                ]
+
+                if recs.empty:
+                    st.info("No similar books found")
+                else:
+                    for _, row in recs.iterrows():
+                        st.markdown(f"""
+                        <div class="card">
+                            <div class="book-title">{row['book']}</div>
+                            <div class="genre">Genre: {row['genre']}</div>
+                            <div class="rating">⭐ Rating: {row['rating']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+    else:
+        st.info("✍️ Type a book name to search")
+else:
+    st.info("⬆️ Upload CSV to start")
+
