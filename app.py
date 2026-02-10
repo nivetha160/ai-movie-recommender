@@ -1,90 +1,80 @@
+
 import streamlit as st
 import pandas as pd
 
 st.set_page_config(
-    page_title="Book Recommender",
+    page_title="Book Recommender App",
     page_icon="📚",
-    layout="wide"
+    layout="centered"
 )
 
-st.markdown("""
-<style>
-.card {
-    border-radius: 12px;
-    padding: 15px;
-    margin: 10px 0;
-    background: #ffffff;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}
-.book-title {
-    font-size: 20px;
-    font-weight: bold;
-}
-.genre {
-    color: #555;
-}
-.rating {
-    color: #ff9800;
-    font-weight: bold;
-}
-</style>
-""", unsafe_allow_html=True)
+st.title("📚 Book Recommendation App")
+st.write("Upload CSV and get book recommendations")
 
-st.title("📚 Book Recommender App")
-st.caption("Search books & get smart recommendations")
+uploaded_file = st.file_uploader("Upload reviews.csv", type=["csv"])
 
-uploaded_file = st.file_uploader("📂 Upload reviews.csv", type=["csv"])
-
-if uploaded_file:
+if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
-    st.success("✅ File uploaded")
 
-    search = st.text_input("🔍 Search book name")
+    st.success("✅ File uploaded successfully")
 
-    if search:
-        results = df[df["book"].str.contains(search, case=False)]
+    # Show column names (debug + safety)
+    st.write("📌 Columns found:", df.columns.tolist())
 
-        if results.empty:
-            st.warning("❌ No book found")
+    # 🔒 Auto-detect column names
+    book_col = None
+    genre_col = None
+    rating_col = None
+
+    for col in df.columns:
+        if col.lower() in ["book", "title", "book_name"]:
+            book_col = col
+        if col.lower() == "genre":
+            genre_col = col
+        if col.lower() == "rating":
+            rating_col = col
+
+    if book_col is None or genre_col is None or rating_col is None:
+        st.error("❌ CSV must have book/title, genre, rating columns")
+    else:
+        st.subheader("📖 Dataset")
+        st.dataframe(df)
+
+        # Search
+        search = st.text_input("🔍 Search book")
+
+        if search:
+            results = df[df[book_col].str.contains(search, case=False, na=False)]
         else:
-            st.subheader("📖 Search Results")
+            results = df
 
-            book_list = results["book"].unique().tolist()
+        book_list = results[book_col].unique().tolist()
+
+        if book_list:
             selected_book = st.selectbox("Select a book", book_list)
 
             if selected_book:
-                book_row = df[df["book"] == selected_book].iloc[0]
-                genre = book_row["genre"]
+                row = df[df[book_col] == selected_book].iloc[0]
+                genre = row[genre_col]
 
-                st.markdown(f"""
-                <div class="card">
-                    <div class="book-title">{book_row['book']}</div>
-                    <div class="genre">Genre: {genre}</div>
-                    <div class="rating">⭐ Rating: {book_row['rating']}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.info(f"📌 Genre: {genre}")
+
+                recommendations = df[
+                    (df[genre_col] == genre) &
+                    (df[book_col] != selected_book) &
+                    (df[rating_col] >= 4)
+                ]
 
                 st.subheader("📚 Recommended Books")
 
-                recs = df[
-                    (df["genre"] == genre) &
-                    (df["book"] != selected_book) &
-                    (df["rating"] >= 4)
-                ]
-
-                if recs.empty:
-                    st.info("No similar books found")
+                if recommendations.empty:
+                    st.warning("No recommendations found")
                 else:
-                    for _, row in recs.iterrows():
-                        st.markdown(f"""
-                        <div class="card">
-                            <div class="book-title">{row['book']}</div>
-                            <div class="genre">Genre: {row['genre']}</div>
-                            <div class="rating">⭐ Rating: {row['rating']}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-    else:
-        st.info("✍️ Type a book name to search")
-else:
-    st.info("⬆️ Upload CSV to start")
+                    st.dataframe(
+                        recommendations[[book_col, genre_col, rating_col]]
+                    )
+        else:
+            st.warning("No books found")
 
+else:
+    st.info("👆 Please upload a CSV file")
