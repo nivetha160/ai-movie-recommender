@@ -18,8 +18,6 @@ if uploaded_file is not None:
 
     st.success("✅ File uploaded successfully")
 
-    # Show column names (debug + safety)
-    st.write("📌 Columns found:", df.columns.tolist())
 
     # 🔒 Auto-detect column names
     book_col = None
