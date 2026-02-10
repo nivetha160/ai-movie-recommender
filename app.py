@@ -1,81 +1,46 @@
 import streamlit as st
 import pandas as pd
-import re
-import nltk
-from nltk.corpus import stopwords
-from textblob import TextBlob
 
-nltk.download('stopwords')
-stop_words = set(stopwords.words('english'))
+st.set_page_config(page_title="Review Analyzer", layout="centered")
 
-st.set_page_config(page_title="AI Movie Recommender", layout="centered")
-st.title("🎬 AI Movie Recommendation App")
-st.write("Mood-aware & Explainable AI Recommender")
+st.title("📱 Review Analyzer App")
+st.write("Upload your **reviews.csv** file")
 
-# ---------------- Upload CSV ----------------
-uploaded_file = st.file_uploader("Upload reviews CSV", type="csv")
+# File upload
+uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
 
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
+if uploaded_file is not None:
+    try:
+        df = pd.read_csv(uploaded_file)
 
-    # ---------------- Clean Text ----------------
-    def clean_text(text):
-        text = text.lower()
-        text = re.sub(r'[^a-z\s]', '', text)
-        words = text.split()
-        words = [w for w in words if w not in stop_words]
-        return " ".join(words)
+        st.success("✅ File uploaded successfully!")
+        st.subheader("📄 Preview")
+        st.dataframe(df)
 
-    df['clean_review'] = df['review'].apply(clean_text)
+        # Basic analysis
+        if "rating" in df.columns:
+            avg_rating = df["rating"].mean()
+            st.subheader("⭐ Average Rating")
+            st.write(round(avg_rating, 2))
 
-    # ---------------- Sentiment ----------------
-    df['sentiment'] = df['review'].apply(lambda x: TextBlob(x).sentiment.polarity)
+        # New feature: sentiment
+        st.subheader("🧠 Simple Sentiment Check")
 
-    # ---------------- USER CONTROLS ----------------
-    st.subheader("🎛 Customize Recommendation")
+        def sentiment(text):
+            text = text.lower()
+            if "good" in text or "excellent" in text:
+                return "Positive 😊"
+            elif "bad" in text or "worst" in text:
+                return "Negative 😡"
+            else:
+                return "Neutral 😐"
 
-    mood = st.selectbox(
-        "Select your mood",
-        ["😊 Happy", "😢 Sad", "🤔 Thoughtful"]
-    )
+        if "review" in df.columns:
+            df["Sentiment"] = df["review"].apply(sentiment)
+            st.dataframe(df)
 
-    alpha = st.slider(
-        "Rating Importance",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.6
-    )
-    beta = 1 - alpha
-
-    top_n = st.selectbox("Number of recommendations", [3, 5, 10])
-
-    # ---------------- Mood Filter ----------------
-    if mood == "😊 Happy":
-        df = df[df['sentiment'] > 0]
-    elif mood == "😢 Sad":
-        df = df[df['sentiment'] < 0]
-
-    # ---------------- Fusion Score ----------------
-    df['norm_rating'] = df['rating'] / 5
-    df['final_score'] = alpha * df['norm_rating'] + beta * df['sentiment']
-
-    # ---------------- Explainable AI ----------------
-    def explain(row):
-        if row['sentiment'] > 0.4:
-            return "Highly positive reviews"
-        elif row['sentiment'] > 0:
-            return "Positive feedback"
-        elif row['sentiment'] < 0:
-            return "Negative reviews reduced score"
-        else:
-            return "Neutral reviews"
-
-    df['reason'] = df.apply(explain, axis=1)
-
-    # ---------------- Show Output ----------------
-    st.subheader("⭐ Recommended Movies")
-    st.table(
-        df.sort_values(by='final_score', ascending=False)
-          [['movie', 'final_score', 'reason']]
-          .head(top_n)
-    )
+    except Exception as e:
+        st.error("❌ Error reading file")
+        st.write(e)
+else:
+    st.info("📂 Please upload reviews.csv")
