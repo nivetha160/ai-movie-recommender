@@ -32,6 +32,11 @@ if uploaded_file is not None:
         if col.lower() == "rating":
             rating_col = col
 
+    if book_col is None or genre_col is None or rating_col is None:
+        st.error("❌ CSV must have book/title, genre, rating columns")
+    else:
+        st.subheader("📖 Dataset")
+        st.dataframe(df)
 
         # Search
         search = st.text_input("🔍 Search book")
@@ -72,3 +77,8 @@ if uploaded_file is not None:
 else:
     st.info("👆 Please upload a CSV file")
 
+
+   
+
+                
+      
