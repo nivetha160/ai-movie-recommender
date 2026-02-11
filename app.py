@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
 
+# ------------------------
+# Page configuration
+# ------------------------
 st.set_page_config(
     page_title="Book Recommender App",
     page_icon="📚",
@@ -8,8 +11,11 @@ st.set_page_config(
 )
 
 st.title("📚 Book Recommendation App")
-st.write("Upload CSV and get book recommendations")
+st.write("Upload a CSV file and get book recommendations based on genre and rating.")
 
+# ------------------------
+# File uploader
+# ------------------------
 uploaded_file = st.file_uploader("Upload reviews.csv", type=["csv"])
 
 if uploaded_file is not None:
@@ -34,21 +40,20 @@ if uploaded_file is not None:
             rating_col = col
 
     if book_col is None or genre_col is None or rating_col is None:
-        st.error("❌ CSV must have book/title, genre, rating columns")
+        st.error("❌ CSV must have columns: book/title, genre, rating")
     else:
         # Ensure ratings are numeric
         df[rating_col] = pd.to_numeric(df[rating_col], errors='coerce')
 
         # ------------------------
-        # NOTE: Dataset will NOT be shown to user
+        # NOTE: Dataset will NOT be shown
         # ------------------------
-        # st.subheader("📖 Dataset")
-        # st.dataframe(df, height=400)
+        # st.dataframe(df)  <-- intentionally hidden
 
         # ------------------------
-        # Search and select book
+        # Search book
         # ------------------------
-        search = st.text_input("🔍 Search book")
+        search = st.text_input("🔍 Search book by name")
 
         if search:
             results = df[df[book_col].str.contains(search, case=False, na=False)]
@@ -79,11 +84,15 @@ if uploaded_file is not None:
                 if recommendations.empty:
                     st.warning("No recommendations found")
                 else:
-                    st.dataframe(recommendations[[book_col, genre_col, rating_col]], height=300)
+                    st.dataframe(
+                        recommendations[[book_col, genre_col, rating_col]],
+                        height=300
+                    )
         else:
-            st.warning("No books found")
+            st.warning("No books found matching your search")
 else:
     st.info("👆 Please upload a CSV file with columns: book/title, genre, rating")
+
 
 )
 
