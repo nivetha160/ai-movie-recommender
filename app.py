@@ -1,21 +1,15 @@
 import streamlit as st
 import pandas as pd
 
-# ------------------------
-# Page Configuration
-# ------------------------
 st.set_page_config(
     page_title="Book Recommender App",
     page_icon="📚",
-    layout="wide"   # use wide layout so tables fit
+    layout="centered"
 )
 
 st.title("📚 Book Recommendation App")
 st.write("Upload CSV and get book recommendations")
 
-# ------------------------
-# File uploader
-# ------------------------
 uploaded_file = st.file_uploader("Upload reviews.csv", type=["csv"])
 
 if uploaded_file is not None:
@@ -45,8 +39,11 @@ if uploaded_file is not None:
         # Ensure ratings are numeric
         df[rating_col] = pd.to_numeric(df[rating_col], errors='coerce')
 
-        st.subheader("📖 Dataset")
-        st.dataframe(df, height=400)
+        # ------------------------
+        # NOTE: Dataset will NOT be shown to user
+        # ------------------------
+        # st.subheader("📖 Dataset")
+        # st.dataframe(df, height=400)
 
         # ------------------------
         # Search and select book
@@ -87,4 +84,6 @@ if uploaded_file is not None:
             st.warning("No books found")
 else:
     st.info("👆 Please upload a CSV file with columns: book/title, genre, rating")
+
+)
 
